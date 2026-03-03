@@ -1,0 +1,29 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "env": {
+    "node": true,
+    "es2024": true
+  },
+  "plugins": ["typescript", "unicorn", "import"],
+  "ignorePatterns": ["node_modules", ".pnpm-store", ".changeset", "dist", "coverage"],
+  "rules": {
+    "no-const-assign": "error",
+    "no-constant-condition": "error",
+    "no-debugger": "error",
+    "no-dupe-keys": "error",
+    "no-unreachable": "error",
+    "no-var": "error",
+    "prefer-const": "error",
+
+    "typescript/no-unused-vars": [
+      "warn",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }
+    ],
+
+    "import/no-duplicates": "error",
+    "unicorn/prefer-node-protocol": "warn"
+  }
+}

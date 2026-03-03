@@ -1,0 +1,29 @@
+{
+  "name": "@saadjs/pi",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r --if-present run build",
+    "test": "pnpm -r --if-present run test",
+    "lint": "oxlint . && pnpm -r --if-present run lint",
+    "lint:fix": "oxlint . --fix",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "changeset publish",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.29.6",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.2",
+    "oxfmt": "latest",
+    "oxlint": "latest"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,mjs,cjs,json,md,yml,yaml}": "oxfmt --write",
+    "*.{js,jsx,ts,tsx,mjs,cjs}": "oxlint --fix"
+  },
+  "packageManager": "pnpm@10.6.0"
+}
