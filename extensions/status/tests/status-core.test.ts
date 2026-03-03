@@ -1,4 +1,5 @@
-import { describe, expect, it } from "bun:test";
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 import {
   canShowForProvider,
   detectProvider,
@@ -24,27 +25,27 @@ function jsonResponse(status: number, body: any): FetchResponseLike {
 
 describe("status-core formatting", () => {
   it("formats durations and reset times", () => {
-    expect(formatDuration(0)).toBe("now");
-    expect(formatDuration(61)).toBe("1m");
-    expect(formatDuration(3660)).toBe("1h 1m");
+    assert.equal(formatDuration(0), "now");
+    assert.equal(formatDuration(61), "1m");
+    assert.equal(formatDuration(3660), "1h 1m");
 
     const now = Date.parse("2026-02-18T12:00:00.000Z");
-    expect(formatResetsAt("2026-02-18T13:30:00.000Z", now)).toBe("1h 30m");
+    assert.equal(formatResetsAt("2026-02-18T13:30:00.000Z", now), "1h 30m");
   });
 
   it("parses percent candidate from fraction and percentage", () => {
-    expect(readPercentCandidate(0.37)).toBe(37);
-    expect(readPercentCandidate(88)).toBe(88);
-    expect(readPercentCandidate(101)).toBeNull();
+    assert.equal(readPercentCandidate(0.37), 37);
+    assert.equal(readPercentCandidate(88), 88);
+    assert.equal(readPercentCandidate(101), null);
   });
 });
 
 describe("status-core provider detection and visibility", () => {
   it("detects codex/claude/copilot providers", () => {
-    expect(detectProvider({ provider: "openai-codex" })).toBe("codex");
-    expect(detectProvider({ provider: "anthropic" })).toBe("claude");
-    expect(detectProvider({ provider: "github-copilot" })).toBe("copilot");
-    expect(detectProvider({ provider: "openai" })).toBeNull();
+    assert.equal(detectProvider({ provider: "openai-codex" }), "codex");
+    assert.equal(detectProvider({ provider: "anthropic" }), "claude");
+    assert.equal(detectProvider({ provider: "github-copilot" }), "copilot");
+    assert.equal(detectProvider({ provider: "openai" }), null);
   });
 
   it("checks provider visibility from auth", () => {
@@ -55,9 +56,9 @@ describe("status-core provider detection and visibility", () => {
     };
 
     const endpoints = resolveUsageEndpoints();
-    expect(canShowForProvider("codex", auth, endpoints)).toBe(true);
-    expect(canShowForProvider("claude", auth, endpoints)).toBe(true);
-    expect(canShowForProvider("copilot", auth, endpoints)).toBe(true);
+    assert.equal(canShowForProvider("codex", auth, endpoints), true);
+    assert.equal(canShowForProvider("claude", auth, endpoints), true);
+    assert.equal(canShowForProvider("copilot", auth, endpoints), true);
   });
 });
 
@@ -73,12 +74,10 @@ describe("status-core network fetchers", () => {
         }),
     });
 
-    expect(usage).toMatchObject({
-      session: 42,
-      weekly: 73,
-      sessionResetsIn: "2m",
-      weeklyResetsIn: "4m",
-    });
+    assert.equal(usage.session, 42);
+    assert.equal(usage.weekly, 73);
+    assert.equal(usage.sessionResetsIn, "2m");
+    assert.equal(usage.weeklyResetsIn, "4m");
   });
 
   it("fetches claude usage with extra usage and weekly fallback", async () => {
@@ -91,10 +90,10 @@ describe("status-core network fetchers", () => {
         }),
     });
 
-    expect(usage.session).toBe(55);
-    expect(usage.weekly).toBe(22);
-    expect(usage.extraSpend).toBe(7.5);
-    expect(usage.extraLimit).toBe(20);
+    assert.equal(usage.session, 55);
+    assert.equal(usage.weekly, 22);
+    assert.equal(usage.extraSpend, 7.5);
+    assert.equal(usage.extraLimit, 20);
   });
 
   it("fetches copilot usage from quota snapshots", async () => {
@@ -109,9 +108,9 @@ describe("status-core network fetchers", () => {
         }),
     });
 
-    expect(usage.session).toBe(20);
-    expect(usage.weekly).toBe(35);
-    expect(usage.sessionResetsIn).toBeTruthy();
+    assert.equal(usage.session, 20);
+    assert.equal(usage.weekly, 35);
+    assert.ok(usage.sessionResetsIn);
   });
 
   it("fetches copilot usage from monthly/limited fallback", async () => {
@@ -123,9 +122,9 @@ describe("status-core network fetchers", () => {
         }),
     });
 
-    expect(usage.session).toBe(60);
-    expect(usage.weekly).toBe(50);
-    expect(usage.weeklyResetsIn).toBeTruthy();
+    assert.equal(usage.session, 60);
+    assert.equal(usage.weekly, 50);
+    assert.ok(usage.weeklyResetsIn);
   });
 
   it("refreshes expired oauth credentials", async () => {
@@ -151,7 +150,7 @@ describe("status-core network fetchers", () => {
       }),
     });
 
-    expect(refreshed.changed).toBe(true);
-    expect(refreshed.auth?.anthropic?.access).toBe("fresh-token");
+    assert.equal(refreshed.changed, true);
+    assert.equal(refreshed.auth?.anthropic?.access, "fresh-token");
   });
 });

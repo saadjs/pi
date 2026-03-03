@@ -20,7 +20,10 @@
   ],
   "type": "module",
   "scripts": {
-    "test": "bun test tests/status-core.test.ts"
+    "test": "node --import tsx --test tests/status-core.test.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.5"
   },
   "peerDependencies": {
     "@mariozechner/pi-ai": "*",
