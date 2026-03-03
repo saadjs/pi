@@ -1,0 +1,35 @@
+{
+  "name": "@saadjs/pi-status",
+  "version": "0.1.0",
+  "description": "Non-interactive /status command for pi (Codex, Claude, Copilot)",
+  "keywords": [
+    "claude",
+    "codex",
+    "copilot",
+    "extension",
+    "pi",
+    "pi-package",
+    "status"
+  ],
+  "license": "MIT",
+  "files": [
+    "index.ts",
+    "core.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "scripts": {
+    "test": "bun test tests/status-core.test.ts"
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-ai": "*",
+    "@mariozechner/pi-coding-agent": "*",
+    "@mariozechner/pi-tui": "*"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
