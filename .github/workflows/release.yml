@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+    paths:
+      - ".changeset/**"
+      - "extensions/**/package.json"
+      - "extensions/**/CHANGELOG.md"
+      - "package.json"
+      - "pnpm-lock.yaml"
   workflow_dispatch:
 
 jobs:
