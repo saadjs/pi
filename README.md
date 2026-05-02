@@ -32,23 +32,16 @@ pnpm install
 pnpm prepare
 ```
 
-## Release flow (Changesets)
+## Publishing
 
-1. Add changeset:
-   ```bash
-   pnpm changeset
-   ```
-2. Version packages:
-   ```bash
-   pnpm version-packages
-   ```
-3. Publish changed packages:
-   ```bash
-   pnpm release
-   ```
-
-## Direct publish (single package)
+Bump the version in the package's `package.json`, then publish:
 
 ```bash
-pnpm --filter @saadjs/pi-status publish --access public --no-git-checks
+pnpm --filter <package-name> publish
+```
+
+Example:
+
+```bash
+pnpm --filter @saadjs/pi-status publish
 ```
