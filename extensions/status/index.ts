@@ -67,7 +67,7 @@ function formatLimitLine(theme: any, name: string, percent: number, reset?: stri
   const p = clampPercentPrecise(percent);
   const resetText = reset ? theme.fg("dim", ` (resets in ${reset})`) : "";
   return (
-    theme.fg("muted", `${name.padEnd(7)} `) +
+    theme.fg("muted", `${name.padEnd(12)} `) +
     renderBar(theme, p) +
     " " +
     theme.fg(colorForPercent(p), formatPercent(p).padStart(8)) +
@@ -238,7 +238,7 @@ export default function (pi: ExtensionAPI) {
     } else if (data.error) {
       lines.push(`Limits: unavailable (${data.error})`);
     } else {
-      lines.push(formatLimitLine(theme, "Session", data.session, data.sessionResetsIn));
+      lines.push(formatLimitLine(theme, "Session (5h)", data.session, data.sessionResetsIn));
       lines.push(formatLimitLine(theme, "Weekly", data.weekly, data.weeklyResetsIn));
 
       if (typeof data.extraSpend === "number" && typeof data.extraLimit === "number") {
