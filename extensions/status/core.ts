@@ -2,18 +2,11 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-export type ProviderKey = "codex" | "claude" | "copilot";
-export type OAuthProviderId = "openai-codex" | "anthropic" | "github-copilot";
+export type ProviderKey = "codex";
+export type OAuthProviderId = "openai-codex";
 
 export interface AuthData {
   "openai-codex"?: { access?: string; refresh?: string; expires?: number };
-  anthropic?: { access?: string; refresh?: string; expires?: number };
-  "github-copilot"?: {
-    access?: string;
-    refresh?: string;
-    expires?: number;
-    type?: string;
-  };
 }
 
 export interface UsageData {
@@ -139,23 +132,6 @@ export function formatResetsAt(isoDate: string, nowMs = Date.now()): string {
   return formatDuration(diffSeconds);
 }
 
-function nextUtcMonthBoundaryMs(nowMs = Date.now()): number {
-  const now = new Date(nowMs);
-  const y = now.getUTCFullYear();
-  const m = now.getUTCMonth();
-  return Date.UTC(y, m + 1, 1, 0, 0, 0, 0);
-}
-
-function copilotResetCountdown(data: any, nowMs = Date.now()): string {
-  const fromApi =
-    typeof data?.quota_reset_date === "string" ? formatResetsAt(data.quota_reset_date, nowMs) : "";
-  if (fromApi) return fromApi;
-
-  const nextBoundary = nextUtcMonthBoundaryMs(nowMs);
-  const seconds = Math.max(0, (nextBoundary - nowMs) / 1000);
-  return formatDuration(seconds);
-}
-
 export function readAuth(authFile = DEFAULT_AUTH_FILE): AuthData | null {
   try {
     const parsed = JSON.parse(fs.readFileSync(authFile, "utf-8"));
@@ -264,52 +240,6 @@ export function readPercentCandidate(value: unknown): number | null {
   return null;
 }
 
-function readCopilotNumber(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string") {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) return parsed;
-  }
-  return null;
-}
-
-function readCopilotPercent(snapshot: any): number | null {
-  const direct = readCopilotNumber(snapshot?.percent_remaining);
-  if (direct != null) return Math.max(0, Math.min(100, direct));
-
-  const entitlement = readCopilotNumber(snapshot?.entitlement);
-  const remaining = readCopilotNumber(snapshot?.remaining);
-  if (entitlement != null && entitlement > 0 && remaining != null) {
-    const pct = (remaining / entitlement) * 100;
-    return Math.max(0, Math.min(100, pct));
-  }
-
-  return null;
-}
-
-function getCopilotSnapshot(data: any, key: string): any | null {
-  const fromQuotaSnapshots = data?.quota_snapshots?.[key];
-  if (fromQuotaSnapshots && typeof fromQuotaSnapshots === "object") return fromQuotaSnapshots;
-
-  if (key === "premium_interactions") {
-    const monthly = readCopilotNumber(data?.monthly_quotas?.completions);
-    const limited = readCopilotNumber(data?.limited_user_quotas?.completions);
-    if (monthly != null || limited != null) {
-      return { entitlement: monthly, remaining: limited };
-    }
-  }
-
-  if (key === "chat") {
-    const monthly = readCopilotNumber(data?.monthly_quotas?.chat);
-    const limited = readCopilotNumber(data?.limited_user_quotas?.chat);
-    if (monthly != null || limited != null) {
-      return { entitlement: monthly, remaining: limited };
-    }
-  }
-
-  return null;
-}
-
 export async function fetchCodexUsage(
   token: string,
   config: RequestConfig = {},
@@ -339,93 +269,6 @@ export async function fetchCodexUsage(
   };
 }
 
-export async function fetchClaudeUsage(
-  token: string,
-  config: RequestConfig = {},
-): Promise<UsageData> {
-  const result = await requestJson(
-    "https://api.anthropic.com/api/oauth/usage",
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "anthropic-beta": "oauth-2025-04-20",
-      },
-    },
-    config,
-  );
-
-  if (!result.ok) return { session: 0, weekly: 0, error: result.error };
-
-  const data = result.data;
-  const weeklyWindow =
-    data?.seven_day || data?.seven_day_sonnet || data?.seven_day_opus || data?.seven_day_oauth_apps;
-
-  const usage: UsageData = {
-    session: readPercentCandidate(data?.five_hour?.utilization) ?? 0,
-    weekly: readPercentCandidate(weeklyWindow?.utilization) ?? 0,
-    sessionResetsIn: data?.five_hour?.resets_at
-      ? formatResetsAt(data.five_hour.resets_at)
-      : undefined,
-    weeklyResetsIn: weeklyWindow?.resets_at ? formatResetsAt(weeklyWindow.resets_at) : undefined,
-  };
-
-  if (data?.extra_usage?.is_enabled) {
-    usage.extraSpend =
-      typeof data.extra_usage.used_credits === "number" ? data.extra_usage.used_credits : undefined;
-    usage.extraLimit =
-      typeof data.extra_usage.monthly_limit === "number"
-        ? data.extra_usage.monthly_limit
-        : undefined;
-  }
-
-  return usage;
-}
-
-export async function fetchCopilotUsage(
-  token: string,
-  config: RequestConfig = {},
-): Promise<UsageData> {
-  const result = await requestJson(
-    "https://api.github.com/copilot_internal/user",
-    {
-      headers: {
-        Authorization: `token ${token}`,
-        Accept: "application/json",
-        "Editor-Version": "vscode/1.107.0",
-        "Editor-Plugin-Version": "copilot-chat/0.35.0",
-        "User-Agent": "GitHubCopilotChat/0.35.0",
-        "Copilot-Integration-Id": "vscode-chat",
-        "X-Github-Api-Version": "2025-04-01",
-      },
-    },
-    config,
-  );
-
-  if (!result.ok) return { session: 0, weekly: 0, error: result.error };
-
-  const data = result.data;
-  const premium = getCopilotSnapshot(data, "premium_interactions");
-  const chat = getCopilotSnapshot(data, "chat");
-
-  const premiumRemaining = readCopilotPercent(premium);
-  const chatRemaining = readCopilotPercent(chat);
-
-  if (premiumRemaining == null && chatRemaining == null) {
-    return { session: 0, weekly: 0, error: "unrecognized response shape" };
-  }
-
-  const sessionUsed = premiumRemaining != null ? 100 - premiumRemaining : 0;
-  const weeklyUsed = chatRemaining != null ? 100 - chatRemaining : sessionUsed;
-  const resetIn = copilotResetCountdown(data);
-
-  return {
-    session: Math.max(0, Math.min(100, sessionUsed)),
-    weekly: Math.max(0, Math.min(100, weeklyUsed)),
-    sessionResetsIn: resetIn,
-    weeklyResetsIn: resetIn,
-  };
-}
-
 export function detectProvider(
   model:
     | { provider?: string; id?: string; name?: string; api?: string }
@@ -437,16 +280,12 @@ export function detectProvider(
 
   const provider = (model.provider || "").toLowerCase();
   if (provider === "openai-codex") return "codex";
-  if (provider === "anthropic") return "claude";
-  if (provider === "github-copilot") return "copilot";
 
   return null;
 }
 
 export function providerToOAuthProviderId(active: ProviderKey | null): OAuthProviderId | null {
   if (active === "codex") return "openai-codex";
-  if (active === "claude") return "anthropic";
-  if (active === "copilot") return "github-copilot";
   return null;
 }
 
@@ -457,9 +296,6 @@ export function canShowForProvider(
 ): boolean {
   if (!active || !auth) return false;
   if (active === "codex") return !!(auth["openai-codex"]?.access || auth["openai-codex"]?.refresh);
-  if (active === "claude") return !!(auth.anthropic?.access || auth.anthropic?.refresh);
-  if (active === "copilot")
-    return !!(auth["github-copilot"]?.access || auth["github-copilot"]?.refresh);
   return false;
 }
 

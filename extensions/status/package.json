@@ -1,11 +1,9 @@
 {
   "name": "@saadjs/pi-status",
   "version": "0.0.1",
-  "description": "Non-interactive /status command for pi (Codex, Claude, Copilot)",
+  "description": "Non-interactive /status command for pi (Codex)",
   "keywords": [
-    "claude",
     "codex",
-    "copilot",
     "extension",
     "pi",
     "pi-package",

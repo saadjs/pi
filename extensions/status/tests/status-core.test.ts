@@ -4,9 +4,7 @@ import {
   canShowForProvider,
   detectProvider,
   ensureFreshAuthForProviders,
-  fetchClaudeUsage,
   fetchCodexUsage,
-  fetchCopilotUsage,
   formatDuration,
   formatResetsAt,
   readPercentCandidate,
@@ -41,24 +39,20 @@ describe("status-core formatting", () => {
 });
 
 describe("status-core provider detection and visibility", () => {
-  it("detects codex/claude/copilot providers", () => {
+  it("detects codex and rejects unsupported providers", () => {
     assert.equal(detectProvider({ provider: "openai-codex" }), "codex");
-    assert.equal(detectProvider({ provider: "anthropic" }), "claude");
-    assert.equal(detectProvider({ provider: "github-copilot" }), "copilot");
+    assert.equal(detectProvider({ provider: "anthropic" }), null);
+    assert.equal(detectProvider({ provider: "github-copilot" }), null);
     assert.equal(detectProvider({ provider: "openai" }), null);
   });
 
   it("checks provider visibility from auth", () => {
     const auth: AuthData = {
       "openai-codex": { access: "a" },
-      anthropic: { refresh: "r" },
-      "github-copilot": { access: "c" },
     };
 
     const endpoints = resolveUsageEndpoints();
     assert.equal(canShowForProvider("codex", auth, endpoints), true);
-    assert.equal(canShowForProvider("claude", auth, endpoints), true);
-    assert.equal(canShowForProvider("copilot", auth, endpoints), true);
   });
 });
 
@@ -80,63 +74,16 @@ describe("status-core network fetchers", () => {
     assert.equal(usage.weeklyResetsIn, "4m");
   });
 
-  it("fetches claude usage with extra usage and weekly fallback", async () => {
-    const usage = await fetchClaudeUsage("token", {
-      fetchFn: async () =>
-        jsonResponse(200, {
-          five_hour: { utilization: 55, resets_at: "2026-02-18T13:00:00.000Z" },
-          seven_day_sonnet: { utilization: 22, resets_at: "2026-02-19T13:00:00.000Z" },
-          extra_usage: { is_enabled: true, used_credits: 7.5, monthly_limit: 20 },
-        }),
-    });
-
-    assert.equal(usage.session, 55);
-    assert.equal(usage.weekly, 22);
-    assert.equal(usage.extraSpend, 7.5);
-    assert.equal(usage.extraLimit, 20);
-  });
-
-  it("fetches copilot usage from quota snapshots", async () => {
-    const usage = await fetchCopilotUsage("token", {
-      fetchFn: async () =>
-        jsonResponse(200, {
-          quota_snapshots: {
-            premium_interactions: { percent_remaining: 80 },
-            chat: { percent_remaining: 65 },
-          },
-          copilot_plan: "individual",
-        }),
-    });
-
-    assert.equal(usage.session, 20);
-    assert.equal(usage.weekly, 35);
-    assert.ok(usage.sessionResetsIn);
-  });
-
-  it("fetches copilot usage from monthly/limited fallback", async () => {
-    const usage = await fetchCopilotUsage("token", {
-      fetchFn: async () =>
-        jsonResponse(200, {
-          monthly_quotas: { completions: 1000, chat: 500 },
-          limited_user_quotas: { completions: 400, chat: 250 },
-        }),
-    });
-
-    assert.equal(usage.session, 60);
-    assert.equal(usage.weekly, 50);
-    assert.ok(usage.weeklyResetsIn);
-  });
-
   it("refreshes expired oauth credentials", async () => {
     const auth: AuthData = {
-      anthropic: {
+      "openai-codex": {
         access: "expired-token",
         refresh: "refresh-token",
         expires: 1,
       },
     };
 
-    const refreshed = await ensureFreshAuthForProviders(["anthropic"], {
+    const refreshed = await ensureFreshAuthForProviders(["openai-codex"], {
       auth,
       nowMs: 10_000,
       persist: false,
@@ -151,6 +98,6 @@ describe("status-core network fetchers", () => {
     });
 
     assert.equal(refreshed.changed, true);
-    assert.equal(refreshed.auth?.anthropic?.access, "fresh-token");
+    assert.equal(refreshed.auth?.["openai-codex"]?.access, "fresh-token");
   });
 });

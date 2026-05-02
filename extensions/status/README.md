@@ -5,8 +5,6 @@ A non-interactive `/status` extension for pi.
 ## Supported providers
 
 - OpenAI Codex (`openai-codex`)
-- Anthropic Claude (`anthropic`)
-- GitHub Copilot (`github-copilot`)
 
 ## Usage
 

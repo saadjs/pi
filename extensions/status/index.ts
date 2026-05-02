@@ -9,9 +9,7 @@ import {
   canShowForProvider,
   colorForPercent,
   detectProvider,
-  fetchClaudeUsage,
   fetchCodexUsage,
-  fetchCopilotUsage,
   ensureFreshAuthForProviders,
   providerToOAuthProviderId,
   readAuth,
@@ -25,8 +23,6 @@ const POLL_INTERVAL_MS = 2 * 60 * 1000;
 
 const PROVIDER_LABELS: Record<ProviderKey, string> = {
   codex: "Codex",
-  claude: "Claude",
-  copilot: "Copilot",
 };
 
 interface UsageState extends UsageByProvider {
@@ -84,8 +80,6 @@ export default function (pi: ExtensionAPI) {
 
   const state: UsageState = {
     codex: null,
-    claude: null,
-    copilot: null,
     lastPoll: 0,
     activeProvider: null,
   };
@@ -163,17 +157,6 @@ export default function (pi: ExtensionAPI) {
       state.codex = access
         ? await fetchCodexUsage(access)
         : { session: 0, weekly: 0, error: "missing access token (try /login again)" };
-    } else if (active === "claude") {
-      const access = auth.anthropic?.access;
-      state.claude = access
-        ? await fetchClaudeUsage(access)
-        : { session: 0, weekly: 0, error: "missing access token (try /login again)" };
-    } else if (active === "copilot") {
-      const creds = auth["github-copilot"];
-      const githubToken = creds?.refresh || creds?.access;
-      state.copilot = githubToken
-        ? await fetchCopilotUsage(githubToken)
-        : { session: 0, weekly: 0, error: "missing GitHub token (try /login again)" };
     }
 
     state.lastPoll = Date.now();
@@ -255,12 +238,8 @@ export default function (pi: ExtensionAPI) {
     } else if (data.error) {
       lines.push(`Limits: unavailable (${data.error})`);
     } else {
-      if (active === "copilot") {
-        lines.push(formatLimitLine(theme, "Premium", data.session, data.sessionResetsIn));
-      } else {
-        lines.push(formatLimitLine(theme, "Session", data.session, data.sessionResetsIn));
-        lines.push(formatLimitLine(theme, "Weekly", data.weekly, data.weeklyResetsIn));
-      }
+      lines.push(formatLimitLine(theme, "Session", data.session, data.sessionResetsIn));
+      lines.push(formatLimitLine(theme, "Weekly", data.weekly, data.weeklyResetsIn));
 
       if (typeof data.extraSpend === "number" && typeof data.extraLimit === "number") {
         lines.push(`Extra: $${data.extraSpend.toFixed(2)} / $${data.extraLimit}`);

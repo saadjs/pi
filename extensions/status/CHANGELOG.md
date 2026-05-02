@@ -4,4 +4,4 @@
 
 ### Patch Changes
 
-- Initial public release of /status extension for Pi Coding Agent with support for Codex, Claude, and GH Copilot.
+- Initial public release of /status extension for Pi Coding Agent with support for Codex.
