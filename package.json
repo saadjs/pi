@@ -9,13 +9,9 @@
     "lint:fix": "oxlint . --fix",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
-    "changeset": "changeset",
-    "version-packages": "changeset version",
-    "release": "changeset publish",
     "prepare": "husky"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.29.6",
     "husky": "^9.1.7",
     "lint-staged": "^15.5.2",
     "oxfmt": "latest",
