@@ -17,6 +17,9 @@
     "LICENSE"
   ],
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "test": "node --import tsx --test tests/status-core.test.ts"
   },
