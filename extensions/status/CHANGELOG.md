@@ -1,5 +1,11 @@
 # @saadjs/pi-status
 
+## 0.0.3
+
+### Patch Changes
+
+- f00baf1: add (5h) to session usage label, remove unused pi-tui peer dependency
+
 ## 0.0.2
 
 ### Patch Changes
