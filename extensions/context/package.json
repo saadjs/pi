@@ -1,0 +1,37 @@
+{
+  "name": "@saadjs/pi-context",
+  "version": "0.1.0",
+  "description": "Minimal context-window progress bar for pi",
+  "keywords": [
+    "context",
+    "extension",
+    "pi",
+    "pi-package",
+    "progress-bar"
+  ],
+  "license": "MIT",
+  "files": [
+    "index.ts",
+    "core.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "node --import tsx --test tests/context-core.test.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.5"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
