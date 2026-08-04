@@ -27,7 +27,6 @@
     "tsx": "^4.20.5"
   },
   "peerDependencies": {
-    "@mariozechner/pi-ai": "*",
     "@mariozechner/pi-coding-agent": "*"
   },
   "pi": {

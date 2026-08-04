@@ -1,5 +1,12 @@
 # @saadjs/pi-status
 
+## 0.0.4
+
+### Patch Changes
+
+- Support weekly-only limits for ChatGPT Codex.
+- Refactor the extension for a leaner implementation.
+
 ## 0.0.3
 
 ### Patch Changes

@@ -1,265 +1,99 @@
-/**
- * Usage Extension - /status command for pi
- *
- * Shows usage in an on-demand /status command for the active model provider.
- */
+/** On-demand ChatGPT Codex usage for pi. */
 
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import {
-  canShowForProvider,
-  colorForPercent,
-  detectProvider,
-  fetchCodexUsage,
-  ensureFreshAuthForProviders,
-  providerToOAuthProviderId,
-  readAuth,
-  resolveUsageEndpoints,
-  type ProviderKey,
-  type UsageByProvider,
-  type UsageData,
-} from "./core";
+import type { ExtensionAPI, ExtensionCommandContext, Theme } from "@mariozechner/pi-coding-agent";
+import { fetchCodexUsage, type UsageLimit } from "./core";
 
-const POLL_INTERVAL_MS = 2 * 60 * 1000;
-
-const PROVIDER_LABELS: Record<ProviderKey, string> = {
-  codex: "Codex",
-};
-
-interface UsageState extends UsageByProvider {
-  lastPoll: number;
-  activeProvider: ProviderKey | null;
-}
-
-function formatModel(modelLike: any): string {
-  if (!modelLike || typeof modelLike !== "object") return "n/a";
-
-  const provider = typeof modelLike.provider === "string" ? modelLike.provider : "";
-  const id = typeof modelLike.id === "string" ? modelLike.id : "";
-  const name = typeof modelLike.name === "string" ? modelLike.name : "";
-
-  if (provider && id) return `${provider}/${id}`;
-  if (name) return name;
-  if (id) return id;
-  if (provider) return provider;
-  return "n/a";
-}
-
-function clampPercentPrecise(value: number): number {
-  if (!Number.isFinite(value)) return 0;
-  return Math.max(0, Math.min(100, value));
-}
+const resetTimeFormat = new Intl.DateTimeFormat(undefined, {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZoneName: "short",
+});
 
 function formatPercent(value: number): string {
-  const p = clampPercentPrecise(value);
-  const fixed = p.toFixed(3).replace(/\.?(0+)$/, "");
-  return `${fixed}%`;
+  return `${value.toFixed(3).replace(/\.?(0+)$/, "")}%`;
 }
 
-function renderBar(theme: any, value: number, width = 12): string {
-  const v = clampPercentPrecise(value);
-  const filled = Math.round((v / 100) * width);
-  const full = "█".repeat(Math.max(0, Math.min(width, filled)));
-  const empty = "░".repeat(Math.max(0, width - filled));
-  return theme.fg(colorForPercent(v), full) + theme.fg("dim", empty);
-}
-
-function formatLimitLine(theme: any, name: string, percent: number, reset?: string): string {
-  const p = clampPercentPrecise(percent);
-  const resetText = reset ? theme.fg("dim", ` (resets in ${reset})`) : "";
-  return (
-    theme.fg("muted", `${name.padEnd(12)} `) +
-    renderBar(theme, p) +
-    " " +
-    theme.fg(colorForPercent(p), formatPercent(p).padStart(8)) +
-    resetText
-  );
+function formatLine(theme: Theme, label: string, value: string, labelWidth: number): string {
+  return theme.fg("muted", `${label}:`.padEnd(labelWidth + 2)) + value;
 }
 
 export default function (pi: ExtensionAPI) {
-  const endpoints = resolveUsageEndpoints();
+  async function showStatus(ctx: ExtensionCommandContext) {
+    if (!ctx.hasUI) return;
 
-  const state: UsageState = {
-    codex: null,
-    lastPoll: 0,
-    activeProvider: null,
-  };
-
-  let pollTimer: ReturnType<typeof setInterval> | null = null;
-  let pollInFlight: Promise<void> | null = null;
-  let pollQueued = false;
-
-  function pickDataForProvider(provider: ProviderKey | null): UsageData | null {
-    if (!provider) return null;
-    return state[provider];
-  }
-
-  function publishUsageUpdate() {
-    const data = pickDataForProvider(state.activeProvider);
-    if (!data || data.error) return;
-
-    pi.events.emit("usage:update", {
-      session: data.session,
-      weekly: data.weekly,
-      sessionResetsIn: data.sessionResetsIn,
-      weeklyResetsIn: data.weeklyResetsIn,
-    });
-  }
-
-  function updateProviderFrom(modelLike: any): boolean {
-    const previous = state.activeProvider;
-    state.activeProvider = detectProvider(modelLike);
-
-    if (previous !== state.activeProvider) {
-      publishUsageUpdate();
-      return true;
-    }
-
-    return false;
-  }
-
-  async function runPoll() {
-    let auth = readAuth();
-    const active = state.activeProvider;
-
-    const setActiveError = (message: string) => {
-      if (!active) return;
-      state[active] = { session: 0, weekly: 0, error: message };
-    };
-
-    if (!canShowForProvider(active, auth, endpoints)) {
-      state.lastPoll = Date.now();
-      publishUsageUpdate();
+    const theme = ctx.ui.theme;
+    const model = ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : "n/a";
+    if (ctx.model?.provider !== "openai-codex") {
+      const width = "Provider".length;
+      ctx.ui.notify(
+        [
+          formatLine(theme, "CWD", ctx.cwd, width),
+          formatLine(theme, "Model", model, width),
+          formatLine(theme, "Provider", "unsupported", width),
+        ].join("\n"),
+        "warning",
+      );
       return;
     }
 
-    const oauthProviderId = providerToOAuthProviderId(active);
-    if (oauthProviderId && auth) {
-      const refreshed = await ensureFreshAuthForProviders([oauthProviderId], { auth });
-      auth = refreshed.auth;
-
-      const refreshError = refreshed.refreshErrors[oauthProviderId];
-      if (refreshError) {
-        setActiveError(`auth refresh failed (${refreshError})`);
-        state.lastPoll = Date.now();
-        publishUsageUpdate();
-        return;
-      }
+    let usage: UsageLimit[] | string;
+    try {
+      const token = await ctx.modelRegistry.getApiKeyForProvider("openai-codex");
+      usage = token ? await fetchCodexUsage(token) : "not logged in for Codex";
+    } catch (error) {
+      usage = error instanceof Error ? error.message : String(error);
     }
 
-    if (!auth) {
-      state.lastPoll = Date.now();
-      publishUsageUpdate();
-      return;
-    }
+    const limits = typeof usage === "string" ? [] : usage;
+    const labelWidth = Math.max(
+      ...["CWD", "Model", "Provider", "Limits", ...limits.map(({ label }) => label)].map(
+        (label) => label.length,
+      ),
+    );
+    const percentWidth = Math.max(
+      0,
+      ...limits.map(({ usedPercent }) => formatPercent(usedPercent).length),
+    );
+    const lines = [
+      formatLine(theme, "CWD", ctx.cwd, labelWidth),
+      formatLine(theme, "Model", model, labelWidth),
+      formatLine(theme, "Provider", "Codex", labelWidth),
+    ];
 
-    if (active === "codex") {
-      const access = auth["openai-codex"]?.access;
-      state.codex = access
-        ? await fetchCodexUsage(access)
-        : { session: 0, weekly: 0, error: "missing access token (try /login again)" };
-    }
-
-    state.lastPoll = Date.now();
-    publishUsageUpdate();
-  }
-
-  async function poll() {
-    if (pollInFlight) {
-      pollQueued = true;
-      await pollInFlight;
-      return;
-    }
-
-    do {
-      pollQueued = false;
-      pollInFlight = runPoll()
-        .catch(() => {
-          // Never crash extension event handlers on transient polling errors.
-        })
-        .finally(() => {
-          pollInFlight = null;
-        });
-
-      await pollInFlight;
-    } while (pollQueued);
-  }
-
-  pi.on("session_start", async (_event, _ctx) => {
-    updateProviderFrom(_ctx.model);
-    await poll();
-
-    if (pollTimer) clearInterval(pollTimer);
-    pollTimer = setInterval(() => {
-      void poll();
-    }, POLL_INTERVAL_MS);
-  });
-
-  pi.on("session_shutdown", async () => {
-    if (pollTimer) {
-      clearInterval(pollTimer);
-      pollTimer = null;
-    }
-  });
-
-  pi.on("turn_start", async (_event, _ctx) => {
-    updateProviderFrom(_ctx.model);
-  });
-
-  pi.on("model_select", async (event, _ctx) => {
-    const changed = updateProviderFrom(event.model ?? _ctx.model);
-    if (changed) await poll();
-  });
-
-  async function handleStatus(_ctx: any) {
-    updateProviderFrom(_ctx.model);
-    await poll();
-
-    if (!_ctx?.hasUI) return;
-
-    const active = state.activeProvider;
-    const model = formatModel(_ctx.model);
-    const theme = _ctx.ui.theme;
-
-    if (!active) {
-      _ctx.ui.notify(`CWD: ${_ctx.cwd}\nModel: ${model}\nProvider: unsupported`, "warning");
-      return;
-    }
-
-    const auth = readAuth();
-    const providerLabel = PROVIDER_LABELS[active];
-    const data = pickDataForProvider(active);
-
-    const lines: string[] = [`CWD: ${_ctx.cwd}`, `Model: ${model}`, `Provider: ${providerLabel}`];
-
-    if (!canShowForProvider(active, auth, endpoints)) {
-      lines.push("Limits: unavailable (not logged in for active provider)");
-    } else if (!data) {
-      lines.push("Limits: unavailable (no usage data yet)");
-    } else if (data.error) {
-      lines.push(`Limits: unavailable (${data.error})`);
+    if (typeof usage === "string") {
+      lines.push(formatLine(theme, "Limits", `unavailable (${usage})`, labelWidth));
+    } else if (usage.length === 0) {
+      lines.push(formatLine(theme, "Limits", "none reported", labelWidth));
     } else {
-      lines.push(formatLimitLine(theme, "Session (5h)", data.session, data.sessionResetsIn));
-      lines.push(formatLimitLine(theme, "Weekly", data.weekly, data.weeklyResetsIn));
-
-      if (typeof data.extraSpend === "number" && typeof data.extraLimit === "number") {
-        lines.push(`Extra: $${data.extraSpend.toFixed(2)} / $${data.extraLimit}`);
+      for (const limit of usage) {
+        const filled = Math.round((limit.usedPercent / 100) * 12);
+        const color =
+          limit.usedPercent >= 90 ? "error" : limit.usedPercent >= 70 ? "warning" : "success";
+        const bar = theme.fg(color, "█".repeat(filled)) + theme.fg("dim", "░".repeat(12 - filled));
+        const resetTime =
+          limit.resetsAt === undefined ? "" : resetTimeFormat.format(limit.resetsAt * 1000);
+        const reset = [limit.resetsIn ? `in ${limit.resetsIn}` : "", resetTime]
+          .filter(Boolean)
+          .join(" · ");
+        const percent = theme.fg(color, formatPercent(limit.usedPercent).padStart(percentWidth));
+        const details = reset ? theme.fg("dim", ` (resets ${reset})`) : "";
+        lines.push(formatLine(theme, limit.label, `${bar} ${percent}${details}`, labelWidth));
       }
     }
 
-    _ctx.ui.notify(lines.join("\n"), "info");
+    ctx.ui.notify(lines.join("\n"), "info");
   }
 
   pi.registerCommand("status", {
-    description: "Show usage status for active model provider",
-    handler: async (_args, _ctx) => {
-      await handleStatus(_ctx);
-    },
+    description: "Show Codex usage status",
+    handler: (_args, ctx) => showStatus(ctx),
   });
 
   pi.registerCommand("usage", {
     description: "Alias for /status",
-    handler: async (_args, _ctx) => {
-      await handleStatus(_ctx);
-    },
+    handler: (_args, ctx) => showStatus(ctx),
   });
 }

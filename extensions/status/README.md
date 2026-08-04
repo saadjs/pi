@@ -8,7 +8,7 @@ A non-interactive `/status` extension for pi.
 
 ## Usage
 
-`/status` (and `/usage`) shows usage for the active model provider and immediately returns to the prompt.
+When a ChatGPT Codex model is active, `/status` (and `/usage`) shows its currently reported limit windows.
 
 ## Install
 
