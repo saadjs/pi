@@ -1,11 +1,12 @@
 # @saadjs/pi-verbs
 
-A tiny pi extension that swaps the default working text for playful verbs and short phrases inspired by programming, running, cycling, road trips, hiking, and a little Pasadena physics.
+A tiny pi extension that swaps the default working text for playful verbs and short phrases.
 
 Examples:
 
-- `Overclocking...`
-- `Running the hot path...`
+- `Flibbertigibbeting...`
+- `Lollygagging...`
+- `Bribing the type checker...`
 - `Taking the scenic branch...`
 - `Knocking exactly three times...`
 
