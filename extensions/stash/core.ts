@@ -23,3 +23,7 @@ export class PromptStash {
 export function isTemporaryAction(input: string): boolean {
   return input.trimStart().startsWith("/");
 }
+
+export function isShellAction(input: string): boolean {
+  return input.trimStart().startsWith("!");
+}

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isTemporaryAction, PromptStash } from "../core";
+import { isShellAction, isTemporaryAction, PromptStash } from "../core";
 
 test("stores and consumes a prompt", () => {
   const stash = new PromptStash();
@@ -14,9 +14,13 @@ test("stores and consumes a prompt", () => {
   assert.equal(stash.hasPrompt, false);
 });
 
-test("recognizes slash commands as temporary actions", () => {
+test("recognizes temporary and shell actions", () => {
   assert.equal(isTemporaryAction("/model"), true);
   assert.equal(isTemporaryAction("  /settings"), true);
   assert.equal(isTemporaryAction("normal prompt"), false);
   assert.equal(isTemporaryAction("!git status"), false);
+
+  assert.equal(isShellAction("!git status"), true);
+  assert.equal(isShellAction("  !!npm test"), true);
+  assert.equal(isShellAction("/settings"), false);
 });

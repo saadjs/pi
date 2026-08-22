@@ -4,7 +4,7 @@ import {
   type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { matchesKey } from "@earendil-works/pi-tui";
-import { isTemporaryAction, PromptStash } from "./core";
+import { isShellAction, isTemporaryAction, PromptStash } from "./core";
 
 const STATUS_ID = "prompt-stash";
 
@@ -90,6 +90,34 @@ export default function (pi: ExtensionAPI) {
           restoreAfterAction(ctx);
         }
       };
+
+      // Pi awaits shell commands inside its submit callback. Wrap that callback after
+      // setEditorComponent() wires it up so restoration happens when execution ends.
+      queueMicrotask(() => {
+        const submit = editor.onSubmit;
+        if (!submit) return;
+
+        editor.onSubmit = async (text: string): Promise<void> => {
+          let submitError: unknown;
+          try {
+            await submit(text);
+          } catch (error) {
+            submitError = error;
+          }
+
+          if (stash.hasPrompt && isShellAction(text)) {
+            const current = ctx.ui.getEditorText();
+            if (current.length === 0 || current.trim() === text.trim()) {
+              // Pi leaves the completed ! command in the editor. Remove only that exact
+              // command; never overwrite text the user entered while it was running.
+              if (current.length > 0) ctx.ui.setEditorText("");
+              restore(ctx, true);
+            }
+          }
+
+          if (submitError !== undefined) throw submitError;
+        };
+      });
 
       return editor;
     });

@@ -9,7 +9,7 @@ Claude Code-style prompt stashing for [pi](https://pi.dev).
 3. Run a slash command such as `/model`, `/settings`, or `/effort high`.
 4. The stashed prompt automatically returns to the editor after the action starts.
 
-Model and thinking-level shortcuts are supported too: after stashing, changing either setting automatically restores the prompt.
+Shell commands are supported too: run `!command` or `!!command` after stashing and the prompt returns when execution finishes. Model and thinking-level shortcuts automatically restore the prompt as well.
 
 Press **Ctrl+S** with an empty editor to restore manually. If both the editor and stash contain text, **Ctrl+S** swaps them. A footer status appears while a prompt is stashed.
 

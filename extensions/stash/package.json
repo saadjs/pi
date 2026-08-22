@@ -1,6 +1,6 @@
 {
   "name": "@saadjs/pi-stash",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Claude Code-style prompt stashing for pi",
   "keywords": [
     "draft",
