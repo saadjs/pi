@@ -1,0 +1,39 @@
+{
+  "name": "@saadjs/pi-stash",
+  "version": "0.0.1",
+  "description": "Claude Code-style prompt stashing for pi",
+  "keywords": [
+    "draft",
+    "extension",
+    "pi",
+    "pi-package",
+    "prompt",
+    "stash"
+  ],
+  "license": "MIT",
+  "files": [
+    "index.ts",
+    "core.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "node --import tsx --test tests/stash-core.test.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.5"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
