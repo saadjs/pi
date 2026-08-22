@@ -1,0 +1,30 @@
+{
+  "name": "@saadjs/pi-exit",
+  "version": "0.0.1",
+  "description": "Adds an /exit command to gracefully exit pi",
+  "keywords": [
+    "command",
+    "exit",
+    "extension",
+    "pi",
+    "pi-package"
+  ],
+  "license": "MIT",
+  "files": [
+    "index.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

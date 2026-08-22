@@ -5,8 +5,9 @@ Monorepo for my pi packages, published as scoped npm packages (`@saadjs/*`) usin
 ## Structure
 
 - `extensions/context` → `@saadjs/pi-context`
-- `extensions/verbs` → `@saadjs/pi-verbs`
+- `extensions/exit` → `@saadjs/pi-exit`
 - `extensions/status` → `@saadjs/pi-status`
+- `extensions/verbs` → `@saadjs/pi-verbs`
 
 ## Setup
 
