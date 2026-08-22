@@ -1,0 +1,32 @@
+{
+  "name": "@saadjs/pi-effort",
+  "version": "0.0.1",
+  "description": "Adds an /effort command for changing pi's reasoning effort",
+  "keywords": [
+    "command",
+    "effort",
+    "extension",
+    "pi",
+    "pi-package",
+    "reasoning",
+    "thinking"
+  ],
+  "license": "MIT",
+  "files": [
+    "index.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
