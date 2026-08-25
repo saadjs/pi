@@ -1,5 +1,13 @@
 # @saadjs/pi-status
 
+## 0.1.0
+
+### Minor Changes
+
+- Add OpenCode Go usage with 5-hour, weekly, and monthly limit bars.
+- Resolve OpenCode credentials from Pi, the environment, or the OpenCode CLI auth file.
+- Isolate provider matching, authentication, and response parsing behind provider adapters.
+
 ## 0.0.4
 
 ### Patch Changes

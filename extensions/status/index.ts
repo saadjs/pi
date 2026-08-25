@@ -1,7 +1,8 @@
-/** On-demand ChatGPT Codex usage for pi. */
+/** On-demand provider usage for pi. */
 
 import type { ExtensionAPI, ExtensionCommandContext, Theme } from "@mariozechner/pi-coding-agent";
-import { fetchCodexUsage, type UsageLimit } from "./core";
+import { findUsageProviderAdapter } from "./adapters";
+import type { UsageLimit } from "./core";
 
 const resetTimeFormat = new Intl.DateTimeFormat(undefined, {
   weekday: "short",
@@ -26,7 +27,8 @@ export default function (pi: ExtensionAPI) {
 
     const theme = ctx.ui.theme;
     const model = ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : "n/a";
-    if (ctx.model?.provider !== "openai-codex") {
+    const adapter = findUsageProviderAdapter(ctx.model?.provider);
+    if (!adapter) {
       const width = "Provider".length;
       ctx.ui.notify(
         [
@@ -41,8 +43,7 @@ export default function (pi: ExtensionAPI) {
 
     let usage: UsageLimit[] | string;
     try {
-      const token = await ctx.modelRegistry.getApiKeyForProvider("openai-codex");
-      usage = token ? await fetchCodexUsage(token) : "not logged in for Codex";
+      usage = await adapter.fetchUsage(ctx);
     } catch (error) {
       usage = error instanceof Error ? error.message : String(error);
     }
@@ -60,7 +61,7 @@ export default function (pi: ExtensionAPI) {
     const lines = [
       formatLine(theme, "CWD", ctx.cwd, labelWidth),
       formatLine(theme, "Model", model, labelWidth),
-      formatLine(theme, "Provider", "Codex", labelWidth),
+      formatLine(theme, "Provider", adapter.displayName, labelWidth),
     ];
 
     if (typeof usage === "string") {
@@ -88,7 +89,7 @@ export default function (pi: ExtensionAPI) {
   }
 
   pi.registerCommand("status", {
-    description: "Show Codex usage status",
+    description: "Show provider usage status",
     handler: (_args, ctx) => showStatus(ctx),
   });
 

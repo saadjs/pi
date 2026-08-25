@@ -1,10 +1,11 @@
 {
   "name": "@saadjs/pi-status",
-  "version": "0.0.4",
-  "description": "Non-interactive /status command for pi (Codex)",
+  "version": "0.1.0",
+  "description": "Non-interactive provider usage command for pi",
   "keywords": [
     "codex",
     "extension",
+    "opencode",
     "pi",
     "pi-package",
     "status"
@@ -13,6 +14,7 @@
   "files": [
     "index.ts",
     "core.ts",
+    "adapters",
     "README.md",
     "LICENSE"
   ],
