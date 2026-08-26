@@ -7,9 +7,19 @@ import { matchesKey } from "@earendil-works/pi-tui";
 import { isShellAction, isTemporaryAction, PromptStash } from "./core";
 
 const STATUS_ID = "prompt-stash";
+const STASH_KEY = Symbol.for("@saadjs/pi-stash/prompt");
+
+interface StashGlobals {
+  [key: symbol]: PromptStash | undefined;
+}
 
 export default function (pi: ExtensionAPI) {
-  const stash = new PromptStash();
+  // Session replacement creates a new extension instance. Keep only the plain
+  // prompt data process-scoped so the replacement instance can restore it with
+  // its fresh context.
+  const globals = globalThis as typeof globalThis & StashGlobals;
+  const stash = (globals[STASH_KEY] ??= new PromptStash());
+  const pendingRestores = new Set<ReturnType<typeof setTimeout>>();
   let activeContext: ExtensionContext | undefined;
 
   function updateStatus(ctx: ExtensionContext): void {
@@ -61,7 +71,11 @@ export default function (pi: ExtensionAPI) {
   }
 
   function restoreAfterAction(ctx: ExtensionContext): void {
-    setTimeout(() => restore(ctx, true), 0);
+    const timeout = setTimeout(() => {
+      pendingRestores.delete(timeout);
+      restore(ctx, true);
+    }, 0);
+    pendingRestores.add(timeout);
   }
 
   pi.on("session_start", (_event, ctx) => {
@@ -122,11 +136,13 @@ export default function (pi: ExtensionAPI) {
       return editor;
     });
 
-    updateStatus(ctx);
+    if (!restore(ctx, true)) updateStatus(ctx);
   });
 
   pi.on("session_shutdown", () => {
     activeContext = undefined;
+    for (const timeout of pendingRestores) clearTimeout(timeout);
+    pendingRestores.clear();
   });
 
   pi.on("model_select", () => {
