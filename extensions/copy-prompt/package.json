@@ -1,0 +1,32 @@
+{
+  "name": "@saadjs/pi-copy-prompt",
+  "version": "0.0.1",
+  "description": "Adds a shortcut for copying pi's current prompt to the system clipboard",
+  "keywords": [
+    "clipboard",
+    "copy",
+    "extension",
+    "pi",
+    "pi-package",
+    "prompt",
+    "shortcut"
+  ],
+  "license": "MIT",
+  "files": [
+    "index.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
