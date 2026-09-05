@@ -1,6 +1,6 @@
 {
   "name": "@saadjs/pi-emojis",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Unicode emoji shortcode autocomplete for pi",
   "keywords": [
     "emoji",

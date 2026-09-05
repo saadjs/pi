@@ -13,6 +13,8 @@ const dataByEmoji = require("unicode-emoji-json/data-by-emoji.json") as Record<
 const CURSOR_TOKEN = /(?:^|[ \t])(:([a-zA-Z0-9_+-]+)(:?))$/;
 // Standalone `:name:` tokens anywhere in submitted text.
 const CLOSED_TOKEN = /(?<=^|[ \t]):([a-zA-Z0-9_+-]+):(?=[ \t]|$)/gm;
+// A closed token followed by whitespace immediately before the cursor.
+const CLOSED_TOKEN_BEFORE_CURSOR = /(?:^|[ \t]):([a-zA-Z0-9_+-]+):[ \t]+$/;
 
 /** Structural match for pi-tui's AutocompleteItem. */
 export interface AutocompleteItem {
@@ -78,6 +80,11 @@ export function extractEmojiToken(textBeforeCursor: string): EmojiToken | undefi
   const match = CURSOR_TOKEN.exec(textBeforeCursor);
   if (!match) return undefined;
   return { prefix: match[1]!, query: match[2]!, closed: match[3] === ":" };
+}
+
+export function followsClosedEmojiToken(index: EmojiIndex, textBeforeCursor: string): boolean {
+  const match = CLOSED_TOKEN_BEFORE_CURSOR.exec(textBeforeCursor);
+  return match !== null && index.byName.has(match[1]!.toLowerCase());
 }
 
 function toItem(entry: EmojiEntry): AutocompleteItem {

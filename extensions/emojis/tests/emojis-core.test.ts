@@ -6,6 +6,7 @@ import {
   applyEmojiCompletion,
   buildEmojiIndex,
   extractEmojiToken,
+  followsClosedEmojiToken,
   getEmojiSuggestions,
   hasSkinToneModifier as hasSkinTone,
   replaceClosedShortcodes,
@@ -163,6 +164,16 @@ describe("emoji token parsing", () => {
 
     for (const text of [":", "foo :", "key:value", "http://example.com", "10:30"]) {
       assert.equal(extractEmojiToken(text), undefined, text);
+    }
+  });
+
+  it("recognizes whitespace immediately after a closed shortcode", () => {
+    for (const text of [":tada: ", "hello :TADA:\t", "hello :party_popper:  "]) {
+      assert.equal(followsClosedEmojiToken(index, text), true, text);
+    }
+
+    for (const text of [":tada:", ":unknown: ", "x:tada: ", ":tada: next "]) {
+      assert.equal(followsClosedEmojiToken(index, text), false, text);
     }
   });
 });

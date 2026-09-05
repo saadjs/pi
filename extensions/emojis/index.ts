@@ -3,6 +3,7 @@ import {
   applyEmojiCompletion,
   buildEmojiIndex,
   extractEmojiToken,
+  followsClosedEmojiToken,
   getEmojiSuggestions,
   replaceClosedShortcodes,
 } from "./core";
@@ -20,8 +21,14 @@ export default function (pi: ExtensionAPI): void {
         // Leave slash-command argument completion to the built-in provider.
         if (lines[0]?.startsWith("/")) return fallback();
 
-        const token = extractEmojiToken((lines[cursorLine] ?? "").slice(0, cursorCol));
-        if (!token) return fallback();
+        const textBeforeCursor = (lines[cursorLine] ?? "").slice(0, cursorCol);
+        const token = extractEmojiToken(textBeforeCursor);
+        if (!token) {
+          // Typing whitespace while emoji suggestions are open asks the provider to update.
+          // Do not let that stale update fall through to pi's natural trailing-space file picker.
+          if (!options.force && followsClosedEmojiToken(index, textBeforeCursor)) return null;
+          return fallback();
+        }
 
         const items = getEmojiSuggestions(index, token);
         return items.length > 0 ? { prefix: token.prefix, items } : fallback();
