@@ -11,6 +11,7 @@ Monorepo for my pi packages, published as scoped npm packages (`@saadjs/*`) usin
 - `extensions/status` → `@saadjs/pi-status`
 - `extensions/stash` → `@saadjs/pi-stash`
 - `extensions/verbs` → `@saadjs/pi-verbs`
+- `extensions/zsh-aliases` → `@saadjs/pi-zsh-aliases`
 
 ## Setup
 
