@@ -4,6 +4,7 @@ Monorepo for my pi packages, published as scoped npm packages (`@saadjs/*`) usin
 
 ## Structure
 
+- `extensions/claude-sub` → `@saadjs/pi-claude-sub`
 - `extensions/context` → `@saadjs/pi-context`
 - `extensions/copy-prompt` → `@saadjs/pi-copy-prompt`
 - `extensions/effort` → `@saadjs/pi-effort`
