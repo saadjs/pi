@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isShellAction, isTemporaryAction, PromptStash } from "../core";
+import { isShellAction, isTemporaryAction, PromptStash } from "../core.ts";
 
 test("stores and consumes a prompt", () => {
   const stash = new PromptStash();

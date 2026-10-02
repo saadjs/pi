@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { clampPercent, colorForPercent, formatPercent, getContextProgress } from "../core";
+import { clampPercent, colorForPercent, formatPercent, getContextProgress } from "../core.ts";
 
 describe("context progress", () => {
   it("builds progress from context usage", () => {

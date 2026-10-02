@@ -1,5 +1,16 @@
 # @saadjs/pi-status
 
+## 0.2.0
+
+### Minor Changes
+
+- Support Sign in with ChatGPT on the `openai` provider. Its tokens cannot read usage, so `/status` reads the Codex CLI's login and shows the plan's usage limit, which Sign in with ChatGPT shares with Codex, or links ChatGPT's usage page when the Codex CLI is not signed in. OpenAI API keys remain unsupported.
+
+### Patch Changes
+
+- Depend on `@earendil-works/pi-coding-agent` instead of the old `@mariozechner/pi-coding-agent` name.
+- Show the unsupported-provider summary as info so pi 1.0's `Warning:` prefix no longer misaligns it.
+
 ## 0.1.0
 
 ### Minor Changes

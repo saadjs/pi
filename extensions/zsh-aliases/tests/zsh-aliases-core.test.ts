@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { findZsh, resolveZshrc, shellQuote, wrapCommand } from "../core";
+import { findZsh, resolveZshrc, shellQuote, wrapCommand } from "../core.ts";
 
 test("prefers $SHELL when it is zsh and exists", () => {
   const exists = (p: string) => p === "/custom/zsh";

@@ -21,10 +21,7 @@
     "access": "public"
   },
   "scripts": {
-    "test": "node --import tsx --test tests/context-core.test.ts"
-  },
-  "devDependencies": {
-    "tsx": "^4.20.5"
+    "test": "node --experimental-strip-types --test tests/*.test.ts"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*"

@@ -10,7 +10,7 @@ import {
   getEmojiSuggestions,
   hasSkinToneModifier as hasSkinTone,
   replaceClosedShortcodes,
-} from "../core";
+} from "../core.ts";
 
 const require = createRequire(import.meta.url);
 const orderedEmoji = require("unicode-emoji-json/data-ordered-emoji.json") as string[];

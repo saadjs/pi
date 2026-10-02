@@ -5,6 +5,11 @@ export interface UsageLimit {
   resetsAt?: number;
 }
 
+/** Linked instead of limit bars when a provider has no usage API Pi can call. */
+export interface UsagePage {
+  url: string;
+}
+
 export interface FetchResponse {
   ok: boolean;
   status: number;
@@ -12,6 +17,16 @@ export interface FetchResponse {
 }
 
 export type FetchUsage = (url: string, init: RequestInit) => Promise<FetchResponse>;
+
+/** A failed usage request; `status` lets adapters explain authentication failures. */
+export class HttpError extends Error {
+  readonly status: number;
+
+  constructor(status: number) {
+    super(`HTTP ${status}`);
+    this.status = status;
+  }
+}
 
 export function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);

@@ -1,8 +1,13 @@
 import assert from "node:assert/strict";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, it } from "node:test";
-import { findUsageProviderAdapter } from "../adapters";
-import { fetchCodexUsage } from "../adapters/codex";
-import { fetchOpenCodeUsage, parseOpenCodeApiKey } from "../adapters/opencode";
+import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import { fetchChatGPTUsage, parseCodexCliLogin } from "../adapters/chatgpt.ts";
+import { findUsageProviderAdapter } from "../adapters/index.ts";
+import { fetchCodexUsage } from "../adapters/codex.ts";
+import { fetchOpenCodeUsage, parseOpenCodeApiKey } from "../adapters/opencode.ts";
 
 function response(body: unknown, status = 200) {
   return {
@@ -14,10 +19,99 @@ function response(body: unknown, status = 200) {
 
 describe("Usage provider adapters", () => {
   it("resolves each supported provider through the registry", () => {
+    assert.equal(findUsageProviderAdapter("openai")?.displayName, "OpenAI (ChatGPT)");
     assert.equal(findUsageProviderAdapter("openai-codex")?.displayName, "Codex");
     assert.equal(findUsageProviderAdapter("opencode-go")?.displayName, "OpenCode Go");
     assert.equal(findUsageProviderAdapter("opencode"), undefined);
     assert.equal(findUsageProviderAdapter("unsupported"), undefined);
+  });
+});
+
+describe("ChatGPT usage", () => {
+  const adapter = findUsageProviderAdapter("openai")!;
+  const model = { provider: "openai", id: "gpt-6.1-sol" };
+
+  function context(activeModel: object | undefined, oauth: boolean) {
+    return {
+      model: activeModel,
+      modelRegistry: { isUsingOAuth: () => oauth },
+    } as unknown as ExtensionCommandContext;
+  }
+
+  it("supports Sign in with ChatGPT but not API keys", () => {
+    assert.equal(adapter.supports?.(context(model, true)), true);
+    assert.equal(adapter.supports?.(context(model, false)), false);
+    assert.equal(adapter.supports?.(context(undefined, true)), false);
+  });
+
+  it("links ChatGPT's usage page without a Codex CLI login", async () => {
+    const codexHome = process.env.CODEX_HOME;
+    process.env.CODEX_HOME = mkdtempSync(join(tmpdir(), "pi-status-"));
+    try {
+      assert.deepEqual(await adapter.fetchUsage(context(model, true)), {
+        url: "https://chatgpt.com/settings/usage",
+      });
+    } finally {
+      if (codexHome === undefined) delete process.env.CODEX_HOME;
+      else process.env.CODEX_HOME = codexHome;
+    }
+  });
+
+  it("reads and trims the Codex CLI login", () => {
+    assert.deepEqual(
+      parseCodexCliLogin({ tokens: { access_token: " token\n", account_id: "account" } }),
+      { accessToken: "token", accountId: "account" },
+    );
+    assert.deepEqual(parseCodexCliLogin({ tokens: { access_token: "token" } }), {
+      accessToken: "token",
+      accountId: undefined,
+    });
+    assert.equal(parseCodexCliLogin({ tokens: { access_token: " " } }), undefined);
+    assert.equal(parseCodexCliLogin({ OPENAI_API_KEY: "sk-test" }), undefined);
+  });
+
+  it("reports the plan's one shared limit with the Codex CLI login", async () => {
+    let request: { url: string; init: RequestInit } | undefined;
+    const limits = await fetchChatGPTUsage(
+      { accessToken: "token", accountId: "account" },
+      async (url, init) => {
+        request = { url, init };
+        return response({
+          rate_limit: {
+            primary_window: {
+              used_percent: 2,
+              limit_window_seconds: 604_800,
+              reset_after_seconds: 120,
+              reset_at: 1_791_154_432,
+            },
+            secondary_window: null,
+          },
+          // Undocumented and not a limit OpenAI shows; ignored.
+          chatpass: { windows: [{ used_percent: 0, limit_window_seconds: 604_800 }] },
+        });
+      },
+    );
+
+    assert.deepEqual(limits, [
+      { label: "Weekly", usedPercent: 2, resetsIn: "2m", resetsAt: 1_791_154_432 },
+    ]);
+    assert.ok(request);
+    assert.equal(request.url, "https://chatgpt.com/backend-api/wham/usage");
+    assert.deepEqual(request.init.headers, {
+      Authorization: "Bearer token",
+      "ChatGPT-Account-Id": "account",
+    });
+  });
+
+  it("explains an expired Codex CLI login", async () => {
+    await assert.rejects(
+      fetchChatGPTUsage({ accessToken: "token" }, async () => response({}, 401)),
+      /Codex CLI login expired/,
+    );
+    await assert.rejects(
+      fetchChatGPTUsage({ accessToken: "token" }, async () => response({})),
+      /invalid usage response/,
+    );
   });
 });
 

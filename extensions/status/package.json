@@ -1,10 +1,12 @@
 {
   "name": "@saadjs/pi-status",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Non-interactive provider usage command for pi",
   "keywords": [
+    "chatgpt",
     "codex",
     "extension",
+    "openai",
     "opencode",
     "pi",
     "pi-package",
@@ -23,13 +25,10 @@
     "access": "public"
   },
   "scripts": {
-    "test": "node --import tsx --test tests/status-core.test.ts"
-  },
-  "devDependencies": {
-    "tsx": "^4.20.5"
+    "test": "node --experimental-strip-types --test tests/*.test.ts"
   },
   "peerDependencies": {
-    "@mariozechner/pi-coding-agent": "*"
+    "@earendil-works/pi-coding-agent": "*"
   },
   "pi": {
     "extensions": [

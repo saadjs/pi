@@ -1,5 +1,12 @@
-import type { ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
-import { formatDuration, isObject, numberAtLeast, type FetchUsage, type UsageLimit } from "../core";
+import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import {
+  formatDuration,
+  HttpError,
+  isObject,
+  numberAtLeast,
+  type FetchUsage,
+  type UsageLimit,
+} from "../core.ts";
 import type { UsageProviderAdapter } from "./types";
 
 function parseWindow(value: unknown, fallbackLabel: string): UsageLimit | null {
@@ -24,15 +31,20 @@ function parseWindow(value: unknown, fallbackLabel: string): UsageLimit | null {
   };
 }
 
+/** The ChatGPT plan's usage limit, which Codex shares with Work and Sign in with ChatGPT apps. */
 export async function fetchCodexUsage(
   token: string,
   fetchUsage: FetchUsage = fetch,
+  accountId?: string,
 ): Promise<UsageLimit[]> {
+  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+  if (accountId) headers["ChatGPT-Account-Id"] = accountId;
+
   const response = await fetchUsage("https://chatgpt.com/backend-api/wham/usage", {
-    headers: { Authorization: `Bearer ${token}` },
+    headers,
     signal: AbortSignal.timeout(12_000),
   });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  if (!response.ok) throw new HttpError(response.status);
 
   const payload = await response.json();
   if (!isObject(payload) || !isObject(payload.rate_limit)) {

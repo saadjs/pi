@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
-import { isObject, numberAtLeast, type FetchUsage, type UsageLimit } from "../core";
+import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import { isObject, numberAtLeast, type FetchUsage, type UsageLimit } from "../core.ts";
 import type { UsageProviderAdapter } from "./types";
 
 const OPENCODE_USAGE_URL = "https://opencode.ai/zen/go/v1/usage";

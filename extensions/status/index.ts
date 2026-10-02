@@ -1,8 +1,8 @@
 /** On-demand provider usage for pi. */
 
-import type { ExtensionAPI, ExtensionCommandContext, Theme } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionCommandContext, Theme } from "@earendil-works/pi-coding-agent";
 import { findUsageProviderAdapter } from "./adapters";
-import type { UsageLimit } from "./core";
+import type { UsageLimit, UsagePage } from "./core";
 
 const resetTimeFormat = new Intl.DateTimeFormat(undefined, {
   weekday: "short",
@@ -28,27 +28,28 @@ export default function (pi: ExtensionAPI) {
     const theme = ctx.ui.theme;
     const model = ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : "n/a";
     const adapter = findUsageProviderAdapter(ctx.model?.provider);
-    if (!adapter) {
+    if (!adapter || adapter.supports?.(ctx) === false) {
       const width = "Provider".length;
+      // Info, not warning: Pi prefixes warnings with "Warning: ", which misaligns the first row.
       ctx.ui.notify(
         [
           formatLine(theme, "CWD", ctx.cwd, width),
           formatLine(theme, "Model", model, width),
           formatLine(theme, "Provider", "unsupported", width),
         ].join("\n"),
-        "warning",
+        "info",
       );
       return;
     }
 
-    let usage: UsageLimit[] | string;
+    let usage: UsageLimit[] | UsagePage | string;
     try {
       usage = await adapter.fetchUsage(ctx);
     } catch (error) {
       usage = error instanceof Error ? error.message : String(error);
     }
 
-    const limits = typeof usage === "string" ? [] : usage;
+    const limits = Array.isArray(usage) ? usage : [];
     const labelWidth = Math.max(
       ...["CWD", "Model", "Provider", "Limits", ...limits.map(({ label }) => label)].map(
         (label) => label.length,
@@ -66,6 +67,8 @@ export default function (pi: ExtensionAPI) {
 
     if (typeof usage === "string") {
       lines.push(formatLine(theme, "Limits", `unavailable (${usage})`, labelWidth));
+    } else if (!Array.isArray(usage)) {
+      lines.push(formatLine(theme, "Limits", `see ${usage.url}`, labelWidth));
     } else if (usage.length === 0) {
       lines.push(formatLine(theme, "Limits", "none reported", labelWidth));
     } else {

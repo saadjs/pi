@@ -1,9 +1,11 @@
-import { codexAdapter } from "./codex";
-import { openCodeAdapter } from "./opencode";
+import { chatGPTAdapter } from "./chatgpt.ts";
+import { codexAdapter } from "./codex.ts";
+import { openCodeAdapter } from "./opencode.ts";
 import type { UsageProviderAdapter } from "./types";
 
 /** Add or remove provider adapters only in this registry. */
 export const usageProviderAdapters: readonly UsageProviderAdapter[] = [
+  chatGPTAdapter,
   codexAdapter,
   openCodeAdapter,
 ];
