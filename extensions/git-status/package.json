@@ -1,0 +1,35 @@
+{
+  "name": "@saadjs/pi-git-status",
+  "version": "0.1.0",
+  "description": "Live Git branch, changed files, and line counts in the Pi footer",
+  "keywords": [
+    "extension",
+    "footer",
+    "git",
+    "pi",
+    "pi-package",
+    "status"
+  ],
+  "license": "MIT",
+  "files": [
+    "index.ts",
+    "core.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types --test tests/*.test.ts"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
