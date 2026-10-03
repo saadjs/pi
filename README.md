@@ -11,6 +11,7 @@ Monorepo for my pi packages, published as scoped npm packages (`@saadjs/*`) usin
 - `extensions/emojis` → `@saadjs/pi-emojis`
 - `extensions/exit` → `@saadjs/pi-exit`
 - `extensions/git-status` → `@saadjs/pi-git-status`
+- `extensions/notify` → `@saadjs/pi-notify`
 - `extensions/status` → `@saadjs/pi-status`
 - `extensions/stash` → `@saadjs/pi-stash`
 - `extensions/verbs` → `@saadjs/pi-verbs`

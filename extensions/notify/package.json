@@ -1,0 +1,34 @@
+{
+  "name": "@saadjs/pi-notify",
+  "version": "0.1.0",
+  "description": "Ghostty desktop notifications with sound and response previews when Pi finishes out of focus",
+  "keywords": [
+    "extension",
+    "ghostty",
+    "notifications",
+    "pi",
+    "pi-package"
+  ],
+  "license": "MIT",
+  "files": [
+    "index.ts",
+    "core.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types --test tests/*.test.ts"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
