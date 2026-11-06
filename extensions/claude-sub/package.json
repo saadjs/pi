@@ -1,6 +1,6 @@
 {
   "name": "@saadjs/pi-claude-sub",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Minimal Claude subscription OAuth compatibility for pi",
   "keywords": [
     "claude",

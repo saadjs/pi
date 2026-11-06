@@ -45,7 +45,7 @@ test("OAuth prepends one uncached billing block without rewriting messages, tool
   assert.equal(shaped.system.length, 3);
   assert.match(
     shaped.system[0].text,
-    /^x-anthropic-billing-header: cc_version=2\.1\.280\.[a-f0-9]{3}; cc_entrypoint=sdk-cli; cch=[a-f0-9]{5};$/,
+    /^x-anthropic-billing-header: cc_version=2\.1\.318\.[a-f0-9]{3}; cc_entrypoint=sdk-cli; cch=[a-f0-9]{5};$/,
   );
   assert.equal("cache_control" in shaped.system[0], false);
   assert.equal(shaped.system[1], input.system[0]);
@@ -84,6 +84,45 @@ test("no first user text is unchanged, and string system prompts are preserved",
     system: { text: string }[];
   };
   assert.equal(shaped.system[1].text, input.system);
+});
+
+test("payload hooks preserve explicit replacements, including null", async () => {
+  for (const replacement of [null, false, 0, "", { stream: false }]) {
+    assert.equal(
+      await afterPayloadHook(payload(), {}, () => replacement, "sk-ant-oat01-token"),
+      replacement,
+    );
+  }
+});
+
+test("undefined hook results retain in-place mutations before adding billing", async () => {
+  const input = payload();
+  const result = (await afterPayloadHook(
+    input,
+    {},
+    () => {
+      input.system[1].text = "Changed in place";
+    },
+    "sk-ant-oat01-token",
+  )) as ReturnType<typeof payload>;
+  assert.match(result.system[0].text, /^x-anthropic-billing-header:/);
+  assert.equal(result.system[2].text, "Changed in place");
+  assert.equal(result.messages, input.messages);
+});
+
+test("payload hook failures propagate instead of sending the original request", async () => {
+  const error = new Error("Earlier hook failed");
+  await assert.rejects(
+    afterPayloadHook(
+      payload(),
+      {},
+      async () => {
+        throw error;
+      },
+      "sk-ant-oat01-token",
+    ),
+    (caught) => caught === error,
+  );
 });
 
 test("other payload hooks run first; no-hook requests (e.g. compaction) are shaped", async () => {

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-const DEFAULT_VERSION = "2.1.280";
+const DEFAULT_VERSION = "2.1.318";
 
 type RecordValue = Record<string, unknown>;
 
@@ -70,5 +70,6 @@ export async function afterPayloadHook<TModel>(
   previous: ((payload: unknown, model: TModel) => unknown | Promise<unknown>) | undefined,
   apiKey: string | undefined,
 ): Promise<unknown> {
-  return addOAuthBillingBlock((await previous?.(payload, model)) ?? payload, apiKey);
+  const replacement = await previous?.(payload, model);
+  return addOAuthBillingBlock(replacement === undefined ? payload : replacement, apiKey);
 }
