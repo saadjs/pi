@@ -9,4 +9,6 @@ export interface UsageProviderAdapter {
   supports?(ctx: ExtensionCommandContext): boolean;
   /** Limits to draw as bars, or a page to link when the provider has no usage API Pi can call. */
   fetchUsage(ctx: ExtensionCommandContext): Promise<UsageLimit[] | UsagePage>;
+  /** The signed-in account to show; omit when the provider cannot report one. */
+  fetchAccount?(ctx: ExtensionCommandContext): Promise<string>;
 }

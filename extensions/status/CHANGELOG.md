@@ -1,5 +1,11 @@
 # @saadjs/pi-status
 
+## 0.3.0
+
+### Minor Changes
+
+- Support Claude Pro/Max sign-ins on the `anthropic` provider: show the signed-in account and plan with 5-hour and weekly limit bars. Anthropic API keys remain unsupported.
+
 ## 0.2.0
 
 ### Minor Changes

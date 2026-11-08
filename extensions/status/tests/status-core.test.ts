@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { fetchChatGPTUsage, parseCodexCliLogin } from "../adapters/chatgpt.ts";
+import { fetchClaudeAccount, fetchClaudeUsage } from "../adapters/claude.ts";
 import { findUsageProviderAdapter } from "../adapters/index.ts";
 import { fetchCodexUsage } from "../adapters/codex.ts";
 import { fetchOpenCodeUsage, parseOpenCodeApiKey } from "../adapters/opencode.ts";
@@ -20,6 +21,7 @@ function response(body: unknown, status = 200) {
 describe("Usage provider adapters", () => {
   it("resolves each supported provider through the registry", () => {
     assert.equal(findUsageProviderAdapter("openai")?.displayName, "OpenAI (ChatGPT)");
+    assert.equal(findUsageProviderAdapter("anthropic")?.displayName, "Claude");
     assert.equal(findUsageProviderAdapter("openai-codex")?.displayName, "Codex");
     assert.equal(findUsageProviderAdapter("opencode-go")?.displayName, "OpenCode Go");
     assert.equal(findUsageProviderAdapter("opencode"), undefined);
@@ -264,6 +266,75 @@ describe("Codex usage", () => {
     await assert.rejects(
       fetchCodexUsage("token", async () => response({})),
       /invalid usage response/,
+    );
+  });
+});
+
+describe("Claude usage", () => {
+  const adapter = findUsageProviderAdapter("anthropic")!;
+
+  it("supports Claude Pro/Max sign-ins but not API keys", () => {
+    const context = (oauth: boolean) =>
+      ({
+        model: { provider: "anthropic", id: "claude-opus-4" },
+        modelRegistry: { isUsingOAuth: () => oauth },
+      }) as unknown as ExtensionCommandContext;
+    assert.equal(adapter.supports?.(context(true)), true);
+    assert.equal(adapter.supports?.(context(false)), false);
+  });
+
+  it("reads the 5-hour and weekly windows and skips absent ones", async () => {
+    let request: { url: string; init: RequestInit } | undefined;
+    const limits = await fetchClaudeUsage("token", async (url, init) => {
+      request = { url, init };
+      return response({
+        five_hour: { utilization: 35, resets_at: "2026-11-08T04:10:00.404742+00:00" },
+        seven_day: { utilization: 104, resets_at: "2026-11-14T14:00:00+00:00" },
+        seven_day_opus: null,
+        seven_day_sonnet: { utilization: 12, resets_at: null },
+      });
+    });
+
+    assert.equal(request?.url, "https://api.anthropic.com/api/oauth/usage");
+    assert.deepEqual(request?.init.headers, {
+      Authorization: "Bearer token",
+      "anthropic-beta": "oauth-2025-04-20",
+      Accept: "application/json",
+    });
+    assert.deepEqual(limits, [
+      { label: "5-hour", usedPercent: 35, resetsAt: 1_794_111_000.404 },
+      { label: "Weekly", usedPercent: 100, resetsAt: 1_794_664_800 },
+      { label: "Weekly Sonnet", usedPercent: 12, resetsAt: undefined },
+    ]);
+  });
+
+  it("shows the signed-in email and plan", async () => {
+    const profile = (organization: unknown, account: object = {}) =>
+      fetchClaudeAccount("token", async () =>
+        response({ account: { email: " me@example.com ", ...account }, organization }),
+      );
+
+    assert.equal(await profile({ organization_type: "claude_max" }), "me@example.com (Max)");
+    assert.equal(await profile(null, { has_claude_pro: true }), "me@example.com (Pro)");
+    assert.equal(await profile(null), "me@example.com");
+  });
+
+  it("explains expired logins and rejects malformed responses", async () => {
+    await assert.rejects(
+      fetchClaudeUsage("token", async () => response({}, 401)),
+      /run \/login anthropic/,
+    );
+    await assert.rejects(
+      fetchClaudeUsage("token", async () => response({}, 500)),
+      /HTTP 500/,
+    );
+    await assert.rejects(
+      fetchClaudeAccount("token", async () => response({}, 403)),
+      /run \/login anthropic/,
+    );
+    await assert.rejects(
+      fetchClaudeAccount("token", async () => response({ account: {} })),
+      /invalid profile response/,
     );
   });
 });

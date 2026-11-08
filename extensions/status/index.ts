@@ -42,16 +42,17 @@ export default function (pi: ExtensionAPI) {
       return;
     }
 
-    let usage: UsageLimit[] | UsagePage | string;
-    try {
-      usage = await adapter.fetchUsage(ctx);
-    } catch (error) {
-      usage = error instanceof Error ? error.message : String(error);
-    }
+    const errorMessage = (error: unknown) =>
+      error instanceof Error ? error.message : String(error);
+    const [usage, account]: [UsageLimit[] | UsagePage | string, string | undefined] =
+      await Promise.all([
+        adapter.fetchUsage(ctx).catch(errorMessage),
+        adapter.fetchAccount?.(ctx).catch((error) => `unavailable (${errorMessage(error)})`),
+      ]);
 
     const limits = Array.isArray(usage) ? usage : [];
     const labelWidth = Math.max(
-      ...["CWD", "Model", "Provider", "Limits", ...limits.map(({ label }) => label)].map(
+      ...["CWD", "Model", "Provider", "Account", "Limits", ...limits.map(({ label }) => label)].map(
         (label) => label.length,
       ),
     );
@@ -64,6 +65,7 @@ export default function (pi: ExtensionAPI) {
       formatLine(theme, "Model", model, labelWidth),
       formatLine(theme, "Provider", adapter.displayName, labelWidth),
     ];
+    if (account !== undefined) lines.push(formatLine(theme, "Account", account, labelWidth));
 
     if (typeof usage === "string") {
       lines.push(formatLine(theme, "Limits", `unavailable (${usage})`, labelWidth));
