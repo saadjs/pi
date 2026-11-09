@@ -1,6 +1,6 @@
 {
   "name": "@saadjs/pi-git-status",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Live Git branch, changed files, and line counts in the Pi footer",
   "keywords": [
     "extension",
