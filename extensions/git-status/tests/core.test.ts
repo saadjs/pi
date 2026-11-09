@@ -4,7 +4,13 @@ import { mkdtempSync, mkdirSync, renameSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-import { formatGitStatus, parseNumstat, parseWorkingTree, readGitStatus } from "../core.ts";
+import {
+  formatGitStatus,
+  parseNumstat,
+  parsePullRequest,
+  parseWorkingTree,
+  readGitStatus,
+} from "../core.ts";
 
 function repo() {
   const cwd = mkdtempSync(join(tmpdir(), "pi-git-status-"));
@@ -98,6 +104,43 @@ describe("parsing and formatting", () => {
       "<text>main</text><muted> • </muted><muted>0 changed</muted>" +
         "<muted> • </muted><muted>2 untracked</muted>" +
         "<muted> • </muted><muted>+0</muted> <muted>−0</muted>",
+    );
+  });
+
+  it("parses gh PR states, treating open drafts separately", () => {
+    const pr = (fields: object) =>
+      parsePullRequest(
+        JSON.stringify({ number: 3, url: "https://github.com/o/r/pull/3", ...fields }),
+      );
+    assert.equal(pr({ state: "OPEN", isDraft: false })?.state, "open");
+    assert.equal(pr({ state: "OPEN", isDraft: true })?.state, "draft");
+    assert.equal(pr({ state: "MERGED", isDraft: false })?.state, "merged");
+    assert.equal(pr({ state: "CLOSED", isDraft: true })?.state, "closed");
+    assert.equal(pr({ state: "WEIRD" }), null);
+    assert.equal(pr({ state: "OPEN", url: "javascript:alert(1)" }), null);
+    assert.equal(parsePullRequest("not json"), null);
+  });
+
+  it("puts a colored, hyperlinked PR number after the branch", () => {
+    const color = (name: string, text: string) => `<${name}>${text}</${name}>`;
+    const clean = { branch: "feat", changed: 0, untracked: 0, added: 0, removed: 0 };
+    const url = "https://github.com/o/r/pull/3";
+    const link = (text: string) => `\x1b]8;;${url}\x07${text}\x1b]8;;\x07`;
+    for (const [state, name] of [
+      ["open", "success"],
+      ["draft", "muted"],
+      ["merged", "accent"],
+      ["closed", "error"],
+    ] as const) {
+      assert.equal(
+        formatGitStatus(clean, color, { number: 3, url, state }),
+        `<text>feat</text><muted> • </muted>${link(`<${name}>#3</${name}>`)}` +
+          "<muted> • </muted><success>clean</success>",
+      );
+    }
+    assert.equal(
+      formatGitStatus({ ...clean, changed: 1 }, undefined, { number: 3, url, state: "open" }),
+      `feat • ${link("#3")} • 1 changed • 0 untracked • +0 −0`,
     );
   });
 });

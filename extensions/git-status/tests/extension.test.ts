@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -80,13 +80,13 @@ function harness(cwd: string, mode: ExtensionContext["mode"] = "tui") {
     start: () => handlers.session_start?.({ type: "session_start", reason: "startup" }, ctx),
     shutdown: () => handlers.session_shutdown?.({ type: "session_shutdown", reason: "quit" }, ctx),
     agentEnd: () => handlers.agent_end?.({ type: "agent_end", messages: [] }, ctx),
-    toolResult: (toolName: string, isError = false) =>
+    toolResult: (toolName: string, isError = false, input: Record<string, unknown> = {}) =>
       handlers.tool_result?.(
         {
           type: "tool_result",
           toolCallId: "test-call",
           toolName,
-          input: {},
+          input,
           content: [],
           details: undefined,
           isError,
@@ -220,4 +220,91 @@ it("does not publish an in-flight result after immediate shutdown", async () => 
   h.shutdown();
   await delay(100);
   assert.deepEqual(h.updates, [undefined]);
+});
+
+it("shows the branch PR from gh, refreshes it after PR commands, and hides it when gh is unavailable", async (t) => {
+  const cwd = mkdtempSync(join(tmpdir(), "pi-git-pr-"));
+  const bin = mkdtempSync(join(tmpdir(), "pi-fake-gh-"));
+  t.after(() => {
+    rmSync(cwd, { recursive: true, force: true });
+    rmSync(bin, { recursive: true, force: true });
+  });
+  const git = (...args: string[]) => execFileSync("git", args, { cwd, stdio: "ignore" });
+  git("init", "--initial-branch=main");
+  git(
+    "-c",
+    "user.name=T",
+    "-c",
+    "user.email=t@t",
+    "-c",
+    "commit.gpgsign=false",
+    "commit",
+    "--allow-empty",
+    "-m",
+    "init",
+  );
+  git("checkout", "-b", "feat");
+  const calls = join(bin, "calls");
+  const reply = join(bin, "reply");
+  writeFileSync(calls, "");
+  // The stub gh prints whatever the test puts in `reply`; a leading "!" means fail with that stderr.
+  writeFileSync(
+    join(bin, "gh"),
+    `#!/bin/sh\necho "$@" >> "${calls}"\nr=$(cat "${reply}")\ncase "$r" in !*) echo "\${r#!}" >&2; exit 1;; esac\necho "$r"\n`,
+  );
+  chmodSync(join(bin, "gh"), 0o755);
+  const setReply = (state: string) =>
+    writeFileSync(
+      reply,
+      JSON.stringify({ number: 7, url: "https://github.com/o/r/pull/7", state, isDraft: false }),
+    );
+  const callCount = () => readFileSync(calls, "utf8").split("\n").filter(Boolean).length;
+  const path = process.env.PATH;
+  process.env.PATH = `${bin}:${path}`;
+  t.after(() => {
+    process.env.PATH = path;
+  });
+
+  setReply("OPEN");
+  const h = harness(cwd);
+  t.after(() => h.shutdown());
+  h.theme.fg = (color, text) => `<${color}>${text}</${color}>`;
+  h.start();
+  const link = (color: string) =>
+    `\x1b]8;;https://github.com/o/r/pull/7\x07<${color}>#7</${color}>\x1b]8;;\x07`;
+  await waitFor(() => h.updates.at(-1)?.includes(link("success")) === true);
+  assert.match(readFileSync(calls, "utf8"), /^pr view --json number,url,state,isDraft$/m);
+  assert.equal(callCount(), 1);
+
+  setReply("MERGED");
+  h.toolResult("bash", false, { command: "ls" });
+  h.agentEnd();
+  await delay(300);
+  assert.equal(callCount(), 1, "unrelated activity must not refetch before the poll interval");
+
+  h.toolResult("bash", false, { command: "gh pr merge 7 --squash" });
+  await waitFor(() => h.updates.at(-1)?.includes(link("accent")) === true);
+  assert.equal(callCount(), 2);
+
+  git("checkout", "main");
+  h.agentEnd();
+  await waitFor(
+    () => h.updates.at(-1) === "<text>main</text><muted> • </muted><success>clean</success>",
+  );
+  assert.equal(callCount(), 2, "main is never looked up");
+
+  writeFileSync(reply, '!no pull requests found for branch "other"');
+  git("checkout", "-b", "other");
+  h.agentEnd();
+  await waitFor(() => callCount() === 3);
+  await delay(100);
+  assert.equal(h.updates.at(-1), "<text>other</text><muted> • </muted><success>clean</success>");
+
+  writeFileSync(reply, "!To get started with GitHub CLI, please run:  gh auth login");
+  h.toolResult("bash", false, { command: "git push -u origin other" });
+  await waitFor(() => callCount() === 4);
+  h.toolResult("bash", false, { command: "gh pr create" });
+  await delay(300);
+  assert.equal(callCount(), 4, "signed-out gh is not retried");
+  assert.equal(h.updates.at(-1), "<text>other</text><muted> • </muted><success>clean</success>");
 });

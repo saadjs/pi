@@ -118,18 +118,89 @@ export async function readGitStatus(cwd: string, signal?: AbortSignal): Promise<
   }
 }
 
+export type PullRequestState = "open" | "draft" | "merged" | "closed";
+
+export interface PullRequest {
+  number: number;
+  url: string;
+  state: PullRequestState;
+}
+
+/** `null` means the branch has no PR; `"unavailable"` means gh is missing or signed out. */
+export type PullRequestLookup = PullRequest | null | "unavailable";
+
+export function parsePullRequest(output: string): PullRequest | null {
+  try {
+    const data: unknown = JSON.parse(output);
+    if (typeof data !== "object" || data === null) return null;
+    const { number, url, state, isDraft } = data as Record<string, unknown>;
+    if (typeof number !== "number" || typeof url !== "string" || !url.startsWith("https://")) {
+      return null;
+    }
+    if (state === "OPEN") return { number, url, state: isDraft === true ? "draft" : "open" };
+    if (state === "MERGED") return { number, url, state: "merged" };
+    if (state === "CLOSED") return { number, url, state: "closed" };
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** Looks up the PR for the checked-out branch, including merged and closed ones. */
+export function readPullRequest(cwd: string, signal?: AbortSignal): Promise<PullRequestLookup> {
+  return new Promise((resolve, reject) => {
+    execFile(
+      "gh",
+      ["pr", "view", "--json", "number,url,state,isDraft"],
+      {
+        cwd,
+        signal,
+        env: { ...process.env, GH_PROMPT_DISABLED: "1", NO_COLOR: "1" },
+        encoding: "utf8",
+        timeout: 10_000,
+        windowsHide: true,
+      },
+      (error, stdout, stderr) => {
+        if (!error) return resolve(parsePullRequest(stdout));
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") return resolve("unavailable");
+        if (/no (pull requests|open pull requests) found/i.test(stderr)) return resolve(null);
+        if (/gh auth login|authentication|bad credentials/i.test(stderr)) {
+          return resolve("unavailable");
+        }
+        // Network errors, rate limits, non-GitHub remotes: let the caller keep the last result.
+        reject(error);
+      },
+    );
+  });
+}
+
+/** OSC 8 terminal hyperlink. */
+export function hyperlink(url: string, text: string): string {
+  return `\x1b]8;;${url}\x07${text}\x1b]8;;\x07`;
+}
+
+const PR_COLORS: Record<PullRequestState, StatusColor> = {
+  open: "success",
+  draft: "muted",
+  merged: "accent",
+  closed: "error",
+};
+
 type StatusColor = "text" | "accent" | "muted" | "success" | "error";
 
 export function formatGitStatus(
   status: GitStatus,
   color: (name: StatusColor, text: string) => string = (_name, text) => text,
+  pr?: PullRequest | null,
 ): string {
   const separator = color("muted", " • ");
+  const head = [color("text", status.branch)];
+  if (pr) head.push(hyperlink(pr.url, color(PR_COLORS[pr.state], `#${pr.number}`)));
   if (status.changed === 0 && status.untracked === 0) {
-    return color("text", status.branch) + separator + color("success", "clean");
+    return [...head, color("success", "clean")].join(separator);
   }
   return [
-    color("text", status.branch),
+    ...head,
     color(status.changed ? "accent" : "muted", `${status.changed} changed`),
     color("muted", `${status.untracked} untracked`),
     `${color(status.added ? "success" : "muted", `+${status.added}`)} ${color(status.removed ? "error" : "muted", `−${status.removed}`)}`,

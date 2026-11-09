@@ -3,7 +3,7 @@
 Git status in Pi's footer, alongside other extensions' statuses.
 
 ```text
-main • 3 changed • 2 untracked • +42 −17
+feat • #3 • 3 changed • 2 untracked • +42 −17
 ```
 
 Clean trees show `main • clean`. The status is hidden outside Git repositories or when Git is unavailable.
@@ -30,6 +30,12 @@ Use an absolute path to `index.ts` when running Pi in another repository.
 - **+ / −:** net tracked-file line additions/deletions against `HEAD`. Untracked and binary contents are excluded.
 
 Counts cover the whole repository, even from a subdirectory. Refreshes on session start, after successful `edit`/`write` tools, and after agent completion.
+
+## Pull request
+
+`#3` is the GitHub PR for the current branch, found with `gh pr view`. It's a clickable link (OSC 8) in terminals that support them. Colors: green for open, muted for draft, accent for merged, red for closed. It's hidden on `main`/`master`, when there is no PR, and when `gh` is missing or signed out.
+
+The PR is looked up when the session starts, when the branch changes, and after `git push`, `git checkout`, `git switch`, or `gh pr` commands. Between those, it's polled every 90s while you're active. Polling slows when you go idle, backs off when no PR is found, and stops after an hour without activity.
 
 Custom footers must display extension statuses via `footerData.getExtensionStatuses()`.
 
